@@ -1,0 +1,67 @@
+#
+# A Simple, and totally Insecure, Web Application
+# 
+# Ingress => Deployment => Service 
+#
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: 
+	name: simple-web-application-ingress
+	annotations: 
+		nginx.ingress.kubernetes.io/rewrite-target  /
+spec: 
+	ingressClassName: nginx
+	rules: 
+	- http: 
+	    paths:
+	    - path: /
+		  pathType: Prefix 
+		  backend: 
+		    service: 
+			  name: simple-web-application-svc
+			  port: 
+				number: 5005
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+	name: simple-web-application
+	labels: 
+		app.kubernetes.io/name: simple-web-application
+spec: 
+	replicas: 1
+	selector: 
+		matchLabels: 
+			app.kubernetes.io/name: simple-web-application
+	template:
+		metadata: 
+			labels: 
+				app.kubernetes.io/name: simlpe-web-application
+				k8s-app: web-applications
+			spec: 
+				# NOTE: access to worker node process IDs - this is insecure
+				hostPID: true
+				containers: 
+				- name: simple-web-application
+				  image: localhost/simple-web-application:0.4.5
+				  ports: 
+					- containerPort: 5000
+				  securityContext: 
+					# NOTE: 
+					#  the "privileged" flag grants all privileges (All Linux CAP, SELinux spec_t)
+					# Do not use this. Remove later. 
+					privileged: true
+---
+apiVersion: v1
+kind: Service
+metadata: 
+	name: simple-web-application-svc
+spec: 
+	selector: 
+		app.kubernetes.io/name: simple-web-application
+	ports: 
+		- protocol: TCP
+		  port: 5005
+		  targetPort: 5000
+
