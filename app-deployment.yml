@@ -44,7 +44,7 @@ spec:
       hostPID: true
       containers: 
       - name: simple-web-application
-        image: localhost/simple-web-application:0.4.5
+        image: module8registry.azurecr.io/simple-web-application:1.0.0
         ports: 
         - containerPort: 5000
         securityContext: 
