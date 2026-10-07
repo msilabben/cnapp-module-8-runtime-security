@@ -30,8 +30,8 @@ class RegistrationForm(Form):
 			#get input from form field "username"
 			input_data = form.username.data
 
-			if validate(input_data): 
-				do_some_operations_on_user_input(input-data); 
+			if validate_input(input_data): 
+				do_some_operations_on_user_input(input_data); 
 
 				# NOTE: 
 				#   The next operations are insecure by design, and only a proof of concept. 
@@ -63,7 +63,7 @@ class RegistrationForm(Form):
 # 	- Insecure by design, missing implementations, Only a proof of concept. 
 def validate_input(data): 
 	# Every input is valid - this is not secure behaviour
-	return true
+	return True
 
 def do_some_operations_on_user_input(data): 
 	print("INFO: Executing valid data processing on the server side...")
