@@ -1,0 +1,97 @@
+    - list: protected_namespaces	
+      items: [default]
+
+    - rule: Shell spawned in protected namespace
+      desc: An interactive shell started inside a container in a protected namespace.
+      condition: >
+        spawned_process and container
+        and proc.name in (shell_binaries)
+        and k8s.ns.name in (protected_namespaces)
+      output: >
+        Shell in protected namespace
+        (user=%user.name ns=%k8s.ns.name pod=%k8s.pod.name
+        container=%container.name image=%container.image.repository
+        cmd=%proc.cmdline parent=%proc.pname)
+      priority: WARNING
+      tags: [container, shell, mitre_execution]
+
+    - list: demo_cryptominer_binaries
+      items: [xmrig, xmr-stak, minerd, cpuminer, ccminer,
+              ethminer, cgminer, bfgminer, nbminer, nanominer]
+
+    - rule: Known cryptominer executed in container
+      desc: Detect known miner names or mining protocol arguments.
+      condition: >
+        spawned_process
+        and container
+        and (
+          proc.name in (demo_cryptominer_binaries)
+          or proc.cmdline contains "stratum+tcp://"
+          or proc.cmdline contains "stratum+ssl://"
+          or proc.cmdline contains "stratum2+tcp://"
+          or proc.cmdline contains "stratum2+ssl://"
+        )
+      output: >
+        Possible cryptominer executed
+        | process=%proc.name
+           executable=%proc.exepath
+           command=%proc.cmdline
+           container_id=%container.id
+           namespace=%k8s.ns.name
+           pod=%k8s.pod.name
+      priority: CRITICAL
+      tags: [container, process, mitre_impact, T1496]
+
+    - rule: Chisel Reverse Tunnel Running in Container
+      desc: >
+        Detects the chisel reverse tunnel client running inside a Kubernetes container.
+        Chisel is used by attackers to create outbound C2 channels from a compromised pod
+        to an external server, bypassing all inbound firewall and NSG controls entirely.
+      condition: >
+        spawned_process and
+        container and
+        proc.name = "chisel" and
+        proc.cmdline contains "client"
+      output: >
+        Chisel C2 tunnel detected in container
+        (user=%user.name command=%proc.cmdline
+        container=%container.name image=%container.image.repository
+        ns=%k8s.ns.name pod=%k8s.pod.name)
+      priority: CRITICAL
+      tags: [container, network, mitre_command_and_control, T1572]
+
+    - rule: Kubernetes SA Token Read by Shell or Network Tool
+      desc: >
+        Detects the service account token being read by a shell or network tool.
+        Legitimate apps read this token in code to authenticate to the Kubernetes API.
+        Reading it via nc, sh or curl is a strong indicator of credential theft —
+        the attacker is stealing the pod's identity to exfiltrate and reuse elsewhere.
+      condition: >
+        open_read and
+        container and
+        fd.name = "/var/run/secrets/kubernetes.io/serviceaccount/token" and
+        proc.name in (nc, ncat, netcat, sh, ash, bash, dash, curl, wget, python, python3)
+      output: >
+        SA token read by suspicious process — possible credential theft
+        (user=%user.name command=%proc.cmdline file=%fd.name
+        container=%container.name image=%container.image.repository
+        ns=%k8s.ns.name pod=%k8s.pod.name)
+      priority: CRITICAL
+      tags: [container, credential_access, mitre_credential_access, T1528]
+    - rule: Network Scanning Tool Executed in Container
+      desc: >-
+        Detects network scanning tools running inside a container.
+        Indicates an attacker performing internal reconnaissance
+        after gaining code execution — mapping pods, services and
+        open ports across the cluster network.
+      condition: >
+        spawned_process and
+        container and
+        proc.name in (nmap, masscan, zmap, rustscan, netdiscover)
+      output: >
+        Network scanner detected inside container
+        (user=%user.name command=%proc.cmdline
+        container=%container.name image=%container.image.repository
+        ns=%k8s.ns.name pod=%k8s.pod.name)
+      priority: CRITICAL
+      tags: [container, network, mitre_discovery, T1046]
